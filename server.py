@@ -5,14 +5,11 @@ from rich.live import Live
 from rich.panel import Panel
 from sensor_data import SensorData
 
-SERVER_IP = "0.0.0.0"  # Bind to all available interfaces
+SERVER_IP = "0.0.0.0"
 SERVER_PORT = 12345
 
-# Create a UDP socket
 udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-# Bind the socket to the address
 udp_socket.bind((SERVER_IP, SERVER_PORT))
 
 console = Console()
@@ -26,20 +23,15 @@ console.print(f"Server started at port {SERVER_PORT}", style="bold green")
 sensor_data = SensorData()
 
 with Live(console=console, refresh_per_second=2) as live:
-    while True:
-        # Receive data from the client
-        data, addr = udp_socket.recvfrom(1024)
-
-        # Unpack the data assuming 9 floats (4 bytes each)
-        floats = struct.unpack('9f', data)
-
-        # Update sensor data
-        sensor_data.update(floats)
-
-        # Update the live display with new data
-        panel = create_panel(sensor_data, addr)
-        live.update(panel)
-
-        # Send a response to the client
-        response = "Data received".encode('utf-8')
-        udp_socket.sendto(response, addr)
+    try:
+        while True:
+            data, addr = udp_socket.recvfrom(1024)
+            floats = struct.unpack('9f', data)
+            sensor_data.update(floats)
+            panel = create_panel(sensor_data, addr)
+            live.update(panel)
+            response = "Data received".encode('utf-8')
+            udp_socket.sendto(response, addr)
+    except KeyboardInterrupt:
+        console.print("Stopping server and plotting data...", style="bold red")
+        sensor_data.plot_data()
